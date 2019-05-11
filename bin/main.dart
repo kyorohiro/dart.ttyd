@@ -13,15 +13,11 @@ main(List<String> args) async {
   server.listen((io.HttpRequest req) async {
     try {
       String path = req.uri.path;
-      if (path == "/") {
-        path = "/index.html";
+      if (path == "/ws") {
+        handleWebSocket(req);
+      } else {
+        handleStatic(req);
       }
-      String body = await loadResource(path);
-      req.response
-        ..headers.add(io.HttpHeaders.contentTypeHeader, await getContentTypeFromPath(path))
-        ..write(body)
-        ..write(req.uri.path)
-        ..close();
     } catch (e) {
       req.response
         ..headers.add(io.HttpHeaders.contentTypeHeader, "text/*")
@@ -35,7 +31,7 @@ main(List<String> args) async {
 Future<String> getContentTypeFromPath(String name) async {
   String ext = "";
   ext = name.split(new RegExp("[./]")).last;
-  if(content_types.containsKey(ext)) {
+  if (content_types.containsKey(ext)) {
     return content_types[ext];
   } else {
     return "*/*";
@@ -45,4 +41,25 @@ Future<String> getContentTypeFromPath(String name) async {
 Future<String> loadResource(String path) async {
   io.File file = new io.File("./res" + path);
   return await file.readAsString();
+}
+
+void handleStatic(io.HttpRequest req) async {
+  String path = req.uri.path;
+  if (path == "/") {
+    path = "/index.html";
+  }
+  String body = await loadResource(path);
+  req.response
+    ..headers.add(
+        io.HttpHeaders.contentTypeHeader, await getContentTypeFromPath(path))
+    ..write(body)
+    ..write(req.uri.path)
+    ..close();
+}
+
+void handleWebSocket(io.HttpRequest req)  async {
+  io.WebSocket websocket = await io.WebSocketTransformer.upgrade(req);
+  websocket.listen((v) {
+    websocket.add(v);
+  });
 }
